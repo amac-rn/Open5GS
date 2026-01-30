@@ -10,63 +10,130 @@ Esse projeto é referemnte a implantação do 5G Core (Open5GS) com Docker para 
 
 Implantar o 5G Core (Open5GS) como serviços cloud-native utilizando Docker Compose, garantindo:
 
-    ✅ Reprodutibilidade do ambiente
+* Reprodutibilidade do ambiente
 
-    ✅ Prontidão para integração com RAN/UE
+* Prontidão para integração com RAN/UE
 
-    ✅ Validação do funcionamento do core
+* Validação do funcionamento do core
 
-    ✅ Base para futura migração para Kubernetes
+* Base para futura migração para Kubernetes
 
-🏗️ Arquitetura
-text
+# 🏗️ Arquitetura
 
-┌─────────────────────────────────────────────────────────────┐
-│                    Host Linux (Ubuntu 22.04+)               │
-├─────────────────────────────────────────────────────────────┤
-│  ┌──────────┐  ┌──────────┐  ┌──────────┐  ┌──────────┐   │
-│  │   AMF    │  │   SMF    │  │   UPF    │  │   NRF    │   │
-│  │ (N2/SCTP)│  │ (N4/PFCP)│  │(N3/GTP-U)│  │ (SBI)    │   │
-│  └──────────┘  └──────────┘  └──────────┘  └──────────┘   │
-│  ┌──────────┐  ┌──────────┐  ┌──────────┐  ┌──────────┐   │
-│  │   AUSF   │  │   UDM    │  │   PCF    │  │   UDR    │   │
-│  │  (SBI)   │  │  (SBI)   │  │  (SBI)   │  │  (SBI)   │   │
-│  └──────────┘  └──────────┘  └──────────┘  └──────────┘   │
+```bash
+┌────────────────────────────────────────────────────────────┐
+│                Host Linux (Ubuntu 22.04+)                  │
+├────────────────────────────────────────────────────────────┤
+│  ┌──────────┐  ┌──────────┐  ┌──────────┐  ┌──────────┐    │
+│  │   AMF    │  │   SMF    │  │   UPF    │  │   NRF    │    │
+│  │ (N2/SCTP)│  │ (N4/PFCP)│  │(N3/GTP-U)│  │ (SBI)    │    │
+│  └──────────┘  └──────────┘  └──────────┘  └──────────┘    │
+│  ┌──────────┐  ┌──────────┐  ┌──────────┐  ┌──────────┐    │
+│  │   AUSF   │  │   UDM    │  │   PCF    │  │   UDR    │    │
+│  │  (SBI)   │  │  (SBI)   │  │  (SBI)   │  │  (SBI)   │    │
+│  └──────────┘  └──────────┘  └──────────┘  └──────────┘    │
 │                     ┌─────────────┐                        │
 │                     │  MongoDB    │                        │
 │                     │ (Database)  │                        │
 │                     └─────────────┘                        │
-└─────────────────────────────────────────────────────────────┘
+└────────────────────────────────────────────────────────────┘
+```
 
-📦 Componentes Implementados
-Serviço	Função	Portas Expostas	Protocolo
-MongoDB	Banco de dados	27017 (interno)	TCP
-NRF	Network Repository Function	7777	HTTP
-AMF	Access and Mobility Management	38412, 9090	SCTP, HTTP
-SMF	Session Management Function	8805, 9080	UDP, HTTP
-UPF	User Plane Function	2152, 8805	UDP
-AUSF	Authentication Server	9088	HTTP
-UDM	Unified Data Management	9087	HTTP
-PCF	Policy Control Function	9089	HTTP
-UDR	Unified Data Repository	9086	HTTP
-🚀 Pré-requisitos
-Sistema
+# 📦 Componentes Implementados
+|Serviço	| Função	                    | Portas Expostas | Protocolo   |
+|-----------|-------------------------------|-----------------|-------------|
+|MongoDB	| Banco de dados                | 27017 (interno) | TCP         |
+|NRF	    | Network Repository Function	| 7777	          | HTTP        |
+|AMF        | Access and Mobility Management| 38412, 9090	  | SCTP, HTTP  |
+|SMF	    | Session Management Function	| 8805, 9080	  | UDP, HTTP   |
+|UPF	    | User Plane Function	        | 2152, 8805	  | UDP         |
+|AUSF	    | Authentication Server	        | 9088	          | HTTP        |
+|UDM	    | Unified Data Management	    | 9087	          | HTTP        |
+|PCF	    | Policy Control Function	    | 9089	          | HTTP        |
+|UDR	    | Unified Data Repository	    | 9086	          | HTTP        |
 
-    SO: Ubuntu 22.04 LTS ou equivalente
+# 🚀 Pré-requisitos
 
-    RAM: 4 GB mínimo (8 GB recomendado)
 
-    CPU: 2 núcleos mínimo
+✅ SO: Ubuntu 22.04 LTS ou equivalente
 
-    Armazenamento: 10 GB livre
+✅ RAM: 4 GB mínimo (8 GB recomendado)
 
-Software
-bash
+✅ CPU: 2 núcleos mínimo
 
-# Verificar versões mínimas
-docker --version        # >= 20.10
-docker-compose --version # >= 2.0
+✅ Armazenamento: 10 GB livre
 
+✅ docker: versão superior a 20.10
+
+✅ docker-compose versão superior a 2.0
+
+
+# 📁 Estrutura do Projeto
+```text
+
+open5gs-docker/
+├── docker-compose.yml
+├── .env
+├── README.md
+├── scripts/
+│   ├── start.sh
+│   ├── stop.sh
+│   └── health-check.sh
+├── config/
+│   └── open5gs/
+│       ├── mongo-init.js
+│       └── (configurações personalizadas)
+└── logs/
+
+```
+
+# 🛠️ Instalação e Configuração
+Instalar Docker e Docker Compose
+```bash
+
+# Atualizar sistema
+sudo apt update && sudo apt upgrade -y
+
+# Instalar Docker
+sudo apt install -y docker.io docker-compose
+
+# Verificar a instalação
+docker --version
+docker-compose --version
+
+# Adicionar usuário ao grupo docker (permite usar sem sudo)
+sudo usermod -aG docker $USER
+newgrp docker
+
+# Habilitar Docker no boot
+sudo systemctl enable docker
+```
+
+# Criar diretório do projeto
+```bash
+mkdir open5gs-docker && cd open5gs-docker
+mkdir scripts logs config && cd config
+mkdir open5gs
+```
+
+# Copiar arquivos do projeto para este diretório
+# (docker-compose.yml, .env, scripts, etc.)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+----------------------------------------------------------------
 ⚡ Instalação Rápida
 1. Clone e prepare o ambiente
 bash
