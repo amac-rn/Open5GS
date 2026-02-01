@@ -1,0 +1,7 @@
+nrf:
+    sbi:
+      - addr: 10.45.0.10
+        port: 7777
+    
+    mongo:
+      uri: mongodb://mongodb:27017/open5gs

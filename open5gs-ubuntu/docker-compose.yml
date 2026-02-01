@@ -1,0 +1,277 @@
+version: '3.8'
+
+services:
+  mongodb:
+    build: .
+    container_name: open5gs-mongodb
+    command: mongodb
+    restart: unless-stopped
+    volumes:
+      - mongodb_data:/data/db
+      - ./config/mongo-init.js:/tmp/mongo-init.js:ro
+    networks:
+      open5gs-net:
+        ipv4_address: 10.45.0.100
+    healthcheck:
+      test: ["CMD", "mongo", "--eval", "db.adminCommand('ping')"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  nrf:
+    build: .
+    container_name: open5gs-nrf
+    command: nrf
+    restart: unless-stopped
+    volumes:
+      - ./config/open5gs/nrf.yaml:/etc/open5gs/nrf.yaml:ro
+    environment:
+      - NRF_ADDR=${NRF_ADDR}
+      - NRF_PORT=${NRF_PORT}
+      - MONGODB_SERVER=mongodb
+      - MONGODB_PORT=27017
+    depends_on:
+      mongodb:
+        condition: service_healthy
+    networks:
+      open5gs-net:
+        ipv4_address: 10.45.0.10
+    ports:
+      - "${NRF_PORT}:${NRF_PORT}"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:${NRF_PORT}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  amf:
+    build: .
+    container_name: open5gs-amf
+    command: amf
+    restart: unless-stopped
+    volumes:
+      - ./config/open5gs/amf.yaml:/etc/open5gs/amf.yaml:ro
+    environment:
+      - AMF_ADDR=${AMF_ADDR}
+      - AMF_PORT=${AMF_PORT}
+      - AMF_NGAP_ADDR=${AMF_NGAP_ADDR}
+      - AMF_NGAP_PORT=${AMF_NGAP_PORT}
+      - NRF_ADDR=nrf
+      - NRF_PORT=${NRF_PORT}
+      - MONGODB_SERVER=mongodb
+    depends_on:
+      nrf:
+        condition: service_healthy
+    networks:
+      open5gs-net:
+        ipv4_address: 10.45.0.2
+      sctp-net:
+        ipv4_address: 10.46.0.2
+    ports:
+      - "${AMF_NGAP_PORT}:${AMF_NGAP_PORT}/sctp"
+      - "9090:9090"
+    sysctls:
+      - net.ipv4.ip_forward=1
+      - net.ipv6.conf.all.forwarding=1
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9090"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+
+  smf:
+    build: .
+    container_name: open5gs-smf
+    command: smf
+    restart: unless-stopped
+    volumes:
+      - ./config/open5gs/smf.yaml:/etc/open5gs/smf.yaml:ro
+    environment:
+      - SMF_ADDR=${SMF_ADDR}
+      - SMF_PORT=${SMF_PORT}
+      - SMF_PFCP_ADDR=${SMF_PFCP_ADDR}
+      - SMF_PFCP_PORT=${SMF_PFCP_PORT}
+      - NRF_ADDR=nrf
+      - NRF_PORT=${NRF_PORT}
+      - MONGODB_SERVER=mongodb
+    depends_on:
+      nrf:
+        condition: service_healthy
+    networks:
+      open5gs-net:
+        ipv4_address: 10.45.0.4
+    ports:
+      - "${SMF_PFCP_PORT}:${SMF_PFCP_PORT}/udp"
+      - "8080:8080"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+
+  upf:
+    build: .
+    container_name: open5gs-upf
+    command: upf
+    restart: unless-stopped
+    privileged: true
+    volumes:
+      - ./config/open5gs/upf.yaml:/etc/open5gs/upf.yaml:ro
+    environment:
+      - UPF_ADDR=${UPF_ADDR}
+      - UPF_PORT=${UPF_PORT}
+      - UPF_PFCP_ADDR=${UPF_PFCP_ADDR}
+      - UPF_PFCP_PORT=${UPF_PFCP_PORT}
+      - UPF_GTPU_ADDR=${UPF_GTPU_ADDR}
+      - UPF_GTPU_PORT=${UPF_GTPU_PORT}
+      - SMF_ADDR=smf
+      - SMF_PFCP_PORT=${SMF_PFCP_PORT}
+    depends_on:
+      - smf
+    networks:
+      open5gs-net:
+        ipv4_address: 10.45.0.7
+      gtpu-net:
+        ipv4_address: 10.47.0.7
+    ports:
+      - "${UPF_GTPU_PORT}:${UPF_GTPU_PORT}/udp"
+    sysctls:
+      - net.ipv4.ip_forward=1
+      - net.ipv6.conf.all.forwarding=1
+    healthcheck:
+      test: ["CMD", "pgrep", "open5gs-upfd"]
+      interval: 20s
+      timeout: 5s
+      retries: 3
+
+  udm:
+    build: .
+    container_name: open5gs-udm
+    command: udm
+    restart: unless-stopped
+    volumes:
+      - ./config/open5gs/udm.yaml:/etc/open5gs/udm.yaml:ro
+    environment:
+      - UDM_ADDR=${UDM_ADDR}
+      - UDM_PORT=${UDM_PORT}
+      - NRF_ADDR=nrf
+      - NRF_PORT=${NRF_PORT}
+      - MONGODB_SERVER=mongodb
+    depends_on:
+      nrf:
+        condition: service_healthy
+    networks:
+      open5gs-net:
+        ipv4_address: 10.45.0.6
+    ports:
+      - "8000:8000"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+
+  udr:
+    build: .
+    container_name: open5gs-udr
+    command: udr
+    restart: unless-stopped
+    volumes:
+      - ./config/open5gs/udr.yaml:/etc/open5gs/udr.yaml:ro
+    environment:
+      - UDR_ADDR=${UDR_ADDR}
+      - UDR_PORT=${UDR_PORT}
+      - NRF_ADDR=nrf
+      - NRF_PORT=${NRF_PORT}
+      - MONGODB_SERVER=mongodb
+    depends_on:
+      nrf:
+        condition: service_healthy
+    networks:
+      open5gs-net:
+        ipv4_address: 10.45.0.5
+    ports:
+      - "7000:7000"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:7000"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+
+  ausf:
+    build: .
+    container_name: open5gs-ausf
+    command: ausf
+    restart: unless-stopped
+    volumes:
+      - ./config/open5gs/ausf.yaml:/etc/open5gs/ausf.yaml:ro
+    environment:
+      - AUSF_ADDR=${AUSF_ADDR}
+      - AUSF_PORT=${AUSF_PORT}
+      - NRF_ADDR=nrf
+      - NRF_PORT=${NRF_PORT}
+      - MONGODB_SERVER=mongodb
+    depends_on:
+      nrf:
+        condition: service_healthy
+    networks:
+      open5gs-net:
+        ipv4_address: 10.45.0.8
+    ports:
+      - "6000:6000"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:6000"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+
+  pcf:
+    build: .
+    container_name: open5gs-pcf
+    command: pcf
+    restart: unless-stopped
+    volumes:
+      - ./config/open5gs/pcf.yaml:/etc/open5gs/pcf.yaml:ro
+    environment:
+      - PCF_ADDR=${PCF_ADDR}
+      - PCF_PORT=${PCF_PORT}
+      - NRF_ADDR=nrf
+      - NRF_PORT=${NRF_PORT}
+      - MONGODB_SERVER=mongodb
+    depends_on:
+      nrf:
+        condition: service_healthy
+    networks:
+      open5gs-net:
+        ipv4_address: 10.45.0.9
+    ports:
+      - "5555:5555"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:5555"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+
+networks:
+  open5gs-net:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 10.45.0.0/16
+          gateway: 10.45.0.1
+  sctp-net:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 10.46.0.0/16
+          gateway: 10.46.0.1
+  gtpu-net:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 10.47.0.0/16
+          gateway: 10.47.0.1
+
+volumes:
+  mongodb_data:
+    driver: local

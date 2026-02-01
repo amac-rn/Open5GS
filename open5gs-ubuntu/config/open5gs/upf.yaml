@@ -1,0 +1,14 @@
+upf:
+    pfcp:
+      - addr: 10.45.0.7
+        port: 8805
+    
+    gtpu:
+      - addr: 10.47.0.7
+        port: 2152
+    
+    subnet:
+      - addr: 10.47.0.0/16
+        dnn: internet
+    
+    mtu: 1500

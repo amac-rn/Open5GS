@@ -1,0 +1,20 @@
+smf:
+    sbi:
+      - addr: 10.45.0.4
+        port: 7777
+    
+    pfcp:
+      - addr: 10.45.0.4
+        port: 8805
+    
+    dns:
+      - 8.8.8.8
+      - 8.8.4.4
+    
+    mtu: 1400
+    
+    subnet:
+      - addr: 10.47.0.0/16
+    
+    mongo:
+      uri: mongodb://mongodb:27017/open5gs

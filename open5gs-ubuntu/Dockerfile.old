@@ -1,0 +1,99 @@
+# Dockerfile
+FROM ubuntu:22.04
+
+# Variáveis de ambiente para configuração não interativa
+ENV DEBIAN_FRONTEND=noninteractive
+ENV TZ=UTC
+
+# Instalar dependências do sistema
+RUN apt-get update && apt-get install -y \
+    wget \
+    git \
+    build-essential \
+    python3 \
+    python3-pip \
+    libsctp-dev \
+    libgnutls28-dev \
+    libgcrypt-dev \
+    libssl-dev \
+    libidn11-dev \
+    libmongoc-dev \
+    libbson-dev \
+    libyaml-dev \
+    libnghttp2-dev \
+    libmicrohttpd-dev \
+    libcurl4-gnutls-dev \
+    libgnutls28-dev \
+    libgcrypt20-dev \
+    libtool \
+    autoconf \
+    automake \
+    pkg-config \
+    gcc \
+    g++ \
+    make \
+    cmake \
+    curl \
+    gnupg \
+    net-tools \
+    iproute2 \
+    iputils-ping \
+    meson \
+    tcpdump \
+    vim \
+    && rm -rf /var/lib/apt/lists/*
+
+# Instalar MongoDB 6.0
+RUN wget -qO - https://www.mongodb.org/static/pgp/server-6.0.asc | apt-key add - \
+    && echo "deb [ arch=amd64,arm64 ] https://repo.mongodb.org/apt/ubuntu jammy/mongodb-org/6.0 multiverse" | tee /etc/apt/sources.list.d/mongodb-org-6.0.list \
+    && apt-get update && apt-get install -y mongodb-org \
+    && rm -rf /var/lib/apt/lists/*
+
+# Instalar dependências específicas do Open5GS
+RUN apt-get update && apt-get install -y \
+    libtalloc-dev \
+    libpcsclite-dev \
+    libmongo-client-dev \
+    && rm -rf /var/lib/apt/lists/*
+
+# Clonar e instalar Open5GS
+WORKDIR /tmp
+RUN git clone https://github.com/open5gs/open5gs.git \
+    && cd open5gs \
+    && git checkout main \
+    && meson build \
+    && ninja -C build \
+    && cd build \
+    && ninja install \
+    && ldconfig
+
+# Criar diretórios de configuração
+RUN mkdir -p /etc/open5gs /var/log/open5gs
+
+# Copiar scripts de entrada
+COPY entrypoint.sh /usr/local/bin/entrypoint.sh
+RUN chmod +x /usr/local/bin/entrypoint.sh
+
+# Configurar variáveis de ambiente
+ENV OPEN5GS_HOME=/usr/local
+ENV PATH=$PATH:$OPEN5GS_HOME/bin
+ENV LD_LIBRARY_PATH=/usr/local/lib:$LD_LIBRARY_PATH
+
+# Configurar MongoDB
+RUN mkdir -p /data/db \
+    && chmod 0755 /data/db
+
+# Portas expostas
+# NRF: 7777 (SBI)
+# AMF: 38412 (NGAP/SCTP), 9090 (SBI)
+# SMF: 8080 (SBI), 8805 (PFCP/UDP)
+# UPF: 2152 (GTP-U/UDP)
+# AUSF: 6000 (SBI)
+# UDM: 8000 (SBI)
+# UDR: 7000 (SBI)
+# PCF: 5555 (SBI)
+
+EXPOSE 7777 38412 9090 8080 8805 2152 6000 8000 7000 5555
+
+# Script de entrada
+ENTRYPOINT ["/usr/local/bin/entrypoint.sh"]
