@@ -318,7 +318,7 @@ volumes:
 
 # Resultados
 Os resultados não foram conforme esperado.
-Depois de executar o Docker compose, aparentemtene os comando para escução das funções do core não estavam encontrando o caminho correto no cotainer.  Apenas o banco de dados executou a funão normalmente.
+Depois de executar o Docker compose, aparentemtene os comando para escução das funções do core (nrf, amf, smf, upf, udm, udr, ausf, pcf) não estavam encontrando o caminho correto no cotainer.  Apenas o banco de dados executou a funão normalmente.
 
 Segue abaixo os print e logs da execução do docker composer.
 
